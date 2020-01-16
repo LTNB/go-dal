@@ -30,12 +30,14 @@ func (postgresHelper *Helper) Init() {
 func (postgresHelper Helper) GetOne(bo interface{}) error {
 	rows, err := postgresHelper.getOne(bo)
 	helper.RowsToStruct(rows, bo, "json")
+	defer rows.Close()
 	return err
 }
 
 func (postgresHelper Helper) GetOneByTag(bo interface{}, tagName string) error {
 	rows, err := postgresHelper.getOne(bo)
 	helper.RowsToStruct(rows, bo, tagName)
+	defer rows.Close()
 	return err
 }
 
@@ -44,12 +46,13 @@ func (postgresHelper Helper) GetOneAsMap(bo interface{}) (map[string]interface{}
 	if err != nil {
 		return nil, err
 	}
-	return helper.RowToMap(rows)
+	m, err :=  helper.RowToMap(rows)
+	defer rows.Close()
+	return m ,err
 }
 
 func (postgresHelper Helper) getOne(bo interface{}) (*sql.Rows, error) {
 	rows, err := helper.GetOneRow(bo, postgresHelper.TableName, postgresHelper.db)
-	defer rows.Close()
 	rows.Next()
 	return rows, err
 }
