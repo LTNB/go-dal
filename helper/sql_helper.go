@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"g.ghn.vn/Scommerce/firebase-sender/dal/utils"
 	"reflect"
 	"strings"
 	"time"
@@ -115,7 +114,7 @@ func colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interf
 
 func RowsToStruct(rows *sql.Rows, i interface{}, tagName string) {
 	m, _ := RowToMap(rows)
-	utils.MapToStruct(m, tagName, i)
+	MapToStruct(m, tagName, i)
 }
 
 func RowToMap(rows *sql.Rows) (map[string]interface{}, error) {
@@ -149,3 +148,54 @@ func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 	return db.ExecContext(ctx, sql)
 }
 
+
+//TODO: need to use struct, not use pointer
+func MapToStruct(source map[string]interface{}, tagName string, target interface{}) {
+	val := reflect.ValueOf(target).Elem()
+	numField := val.NumField()
+	for i := 0; i < numField; i++ {
+		field := val.Field(i)
+		if !field.CanSet() {
+			continue
+		}
+
+		if field.Kind() == reflect.Struct {
+			for j := 0; j < field.NumField(); j++ {
+				fieldName := strings.Split(field.Type().Field(j).Tag.Get(tagName), ",")[0]
+				if item, ok := source[fieldName]; ok {
+					if field.Field(j).CanSet() {
+						typeMapping(item, field.Field(j))
+					}
+				}
+			}
+			continue
+		}
+		fieldName := strings.Split(val.Type().Field(i).Tag.Get(tagName), ",")[0]
+		if item, ok := source[fieldName]; ok {
+			typeMapping(item, val.Field(i))
+		}
+	}
+}
+
+
+func typeMapping(item interface{}, field reflect.Value) {
+	if item != nil {
+		switch field.Kind() {
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			field.SetInt(item.(int64))
+		case reflect.String:
+			field.SetString(item.(string))
+		case reflect.Float32, reflect.Float64:
+			field.SetFloat(item.(float64))
+		case reflect.Bool:
+			field.SetBool(item.(bool))
+		case reflect.Ptr:
+			if reflect.ValueOf(item).Kind() == reflect.Bool {
+				itemBool := item.(bool)
+				field.Set(reflect.ValueOf(&itemBool))
+			}
+		case reflect.Struct:
+			field.Set(reflect.ValueOf(item))
+		}
+	}
+}

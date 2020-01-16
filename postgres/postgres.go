@@ -2,8 +2,6 @@ package postgres
 
 import (
 	"database/sql"
-	"g.ghn.vn/Scommerce/firebase-sender/dal/postgres"
-	"g.ghn.vn/Scommerce/firebase-sender/dal/utils"
 	go_dal "github.com/LTNB/go-dal"
 	"github.com/LTNB/go-dal/helper"
 	_ "github.com/lib/pq"
@@ -24,7 +22,7 @@ type Helper struct {
 
 func (postgresHelper *Helper) Init() {
 	if postgresHelper.db == nil {
-		postgresHelper.db = postgres.GetConnection()
+		postgresHelper.db = go_dal.GetDatabase()
 	}
 }
 
@@ -95,7 +93,7 @@ func (postgresHelper Helper) getAllAsInterface(tagName string) ([]interface{}, e
 	for rows.Next() {
 		temp, _ = helper.RowToMap(rows)
 		i := reflect.New(reflect.TypeOf(postgresHelper.Bo))
-		utils.MapToStruct(temp, tagName, i.Interface())
+		helper.MapToStruct(temp, tagName, i.Interface())
 		result = append(result, i.Interface())
 	}
 	return result, err
