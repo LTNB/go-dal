@@ -34,14 +34,14 @@ type InsertBuilder struct {
 }
 
 type UpdateBuilder struct {
-	TableName string
-	WhereClause  WhereClauseBuilder
-	Values map[string]interface{}
+	TableName   string
+	WhereClause WhereClauseBuilder
+	Values      map[string]interface{}
 }
 
 type DeleteBuilder struct {
-	TableName string
-	WhereClause  WhereClauseBuilder
+	TableName   string
+	WhereClause WhereClauseBuilder
 }
 
 func (builder SelectQueryBuilder) BuildSelectQuery() (string, error) {
@@ -78,7 +78,7 @@ func (builder WhereClauseBuilder) buildWhereClause(result string) string {
 	if len(builder.Pair) != 0 {
 		sliceWhereClause := make([]string, 0)
 		for k, v := range builder.Pair {
-			if reflect.TypeOf(v).Kind() == reflect.String {
+			if reflect.TypeOf(v).Kind() == reflect.String && !strings.Contains(v.(string), ".") {
 				v = fmt.Sprintf("'%v'", v)
 			}
 			sliceWhereClause = append(sliceWhereClause, fmt.Sprintf("%v = %v", k, v))
@@ -129,7 +129,7 @@ func (insertBuilder InsertBuilder) BuildInsertQuery() (string, error) {
 	for _, val := range insertBuilder.Values {
 		ret := make([]string, len(val))
 		for i := 0; i < len(val); i++ {
-			if reflect.TypeOf(val[i]).Kind() == reflect.String {
+			if reflect.TypeOf(val[i]).Kind() == reflect.String && !strings.Contains(val[i].(string), ".") {
 				ret[i] = fmt.Sprintf("'%v'", val[i])
 			} else {
 				ret[i] = fmt.Sprintf("%v", val[i])
@@ -142,28 +142,27 @@ func (insertBuilder InsertBuilder) BuildInsertQuery() (string, error) {
 	return result, nil
 }
 
-
 //========update builder
-func (builder UpdateBuilder) BuildUpdateQuery() (string, error){
+func (builder UpdateBuilder) BuildUpdateQuery() (string, error) {
 	if builder.TableName == "" || (builder.WhereClause.NativeWhereClause == "" && builder.WhereClause.Pair == nil) || len(builder.Values) == 0 {
 		return "", errors.New("no enough data for build query")
 	}
 	result := fmt.Sprintf("UPDATE %v ", builder.TableName)
 	sliceValue := make([]string, 0)
-	for k,v := range builder.Values {
-		if reflect.TypeOf(v).Kind() == reflect.String {
+	for k, v := range builder.Values {
+		if reflect.TypeOf(v).Kind() == reflect.String && !strings.Contains(v.(string), ".") {
 			sliceValue = append(sliceValue, fmt.Sprintf("%v = '%v'", k, v))
 		} else {
 			sliceValue = append(sliceValue, fmt.Sprintf("%v = %v", k, v))
 		}
 	}
-	result = fmt.Sprintf(result + "SET %v ", strings.Join(sliceValue, ","))
+	result = fmt.Sprintf(result+"SET %v ", strings.Join(sliceValue, ","))
 	result = builder.WhereClause.buildWhereClause(result)
 	return result, nil
 }
 
 //======== delete builder
-func (builder DeleteBuilder) BuildDeleteQuery() (string, error){
+func (builder DeleteBuilder) BuildDeleteQuery() (string, error) {
 	if builder.TableName == "" || (builder.WhereClause.NativeWhereClause == "" && builder.WhereClause.Pair == nil) {
 		return "", errors.New("no enough data for build query")
 	}

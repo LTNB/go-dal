@@ -12,9 +12,6 @@ import (
  *
  */
 
-type IDatabaseHelper interface {
-	GetDatabase() *sql.DB
-}
 
 var db *sql.DB
 

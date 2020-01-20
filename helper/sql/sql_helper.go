@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	go_dal "github.com/LTNB/go-dal"
 	"reflect"
 	"strings"
 )
@@ -13,26 +14,62 @@ import (
  * @since
  *
  */
+type SQLHelper struct {
+	Handler        go_dal.IDatabaseHelper
+	TableName      string
+	Bo             interface{}
+	DefaultTagName string
+}
 
-func getPrimaryKeys(bo interface{}, result []string) ([]string, error) {
-	primaryTagName := "primary"
-	var err error
-	typ := reflect.TypeOf(bo)
-	for i := 0; i < typ.Elem().NumField(); i++ {
-		field := typ.Field(i)
-		if field.Type.Kind() == reflect.Struct {
-			result, err = getPrimaryKeys(field, result)
-		}
-		if field.Type.Kind() == reflect.Ptr {
-			continue
-		}
-		primaryTag := strings.Split(field.Tag.Get(primaryTagName), ",")[0]
-		if primaryTag == "" {
-			continue
-		}
-		result = append(result, primaryTag)
+func (helper SQLHelper) GetDatabase() *sql.DB{
+	return helper.Handler.GetDatabase()
+}
+
+//impl database_helper
+
+func (helper SQLHelper) GetOne(bo interface{}) error {
+	rows, err := getOneRow(bo, helper.TableName, helper.Handler.GetDatabase())
+	rows.Next()
+	rowsToStruct(rows, bo, "json")
+	defer rows.Close()
+	return err
+}
+
+func (helper SQLHelper) GetOneByTag(bo interface{}, tagName string) error {
+	rows, err := getOneRow(bo, helper.TableName, helper.Handler.GetDatabase())
+	rows.Next()
+	rowsToStruct(rows, bo, tagName)
+	defer rows.Close()
+	return err
+}
+
+func (helper SQLHelper) GetOneByConditions(bo interface{}, conditions map[string]interface{}, tagName string) error {
+	selectBuilder := SelectQueryBuilder{
+		SelectFields: nil,
+		From:         []string{helper.TableName},
+		WhereClause: WhereClauseBuilder{
+			Pair: conditions,
+		},
+		Limit: 1,
 	}
-	return result, err
+	sql, _ := selectBuilder.BuildSelectQuery()
+	rows, err := queryWithContext(sql, helper.Handler.GetDatabase())
+	rows.Next()
+	rowsToStruct(rows, bo, tagName)
+	defer rows.Close()
+	return err
+}
+
+func (helper SQLHelper) GetOneAsMap(bo interface{}) (map[string]interface{}, error) {
+	rows, err := getOneRow(bo, helper.TableName, helper.Handler.GetDatabase())
+	rows.Next()
+	if err != nil {
+		return nil, err
+	}
+	m, err := rowToMap(rows)
+	defer rows.Close()
+	return m, err
+
 }
 
 func getPrimaryKeysValues(bo interface{}, result map[string]interface{}) (map[string]interface{}, error) {
@@ -62,7 +99,7 @@ func getPrimaryKeysValues(bo interface{}, result map[string]interface{}) (map[st
 	return result, err
 }
 
-func GetOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) {
+func getOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) {
 	primaryKeys, _ := getPrimaryKeysValues(bo, make(map[string]interface{}, 0))
 	selectBuilder := SelectQueryBuilder{
 		SelectFields: nil,
@@ -76,36 +113,12 @@ func GetOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) 
 	return queryWithContext(sql, db)
 }
 
-func GetOneRowByConditions(conditions map[string]interface{}, tableName string, db *sql.DB) (*sql.Rows, error) {
-	selectBuilder := SelectQueryBuilder{
-		SelectFields: nil,
-		From:         []string{tableName},
-		WhereClause: WhereClauseBuilder{
-			Pair: conditions,
-		},
-		Limit: 1,
-	}
-	sql, _ := selectBuilder.BuildSelectQuery()
-	return queryWithContext(sql, db)
+func (helper SQLHelper) GetAll() ([]interface{}, error) {
+	return helper.GetAllByTag(helper.DefaultTagName)
 }
 
-func GetAllAsMap(tableName string, db *sql.DB) ([]map[string]interface{}, error) {
-	rows, err := getAllRows(tableName, nil, nil, 0, -1, db)
-	defer rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]map[string]interface{}, 0)
-	temp := make(map[string]interface{})
-	for rows.Next() {
-		temp, err = RowToMap(rows)
-		result = append(result, temp)
-	}
-	return result, err
-}
-
-func GetAllAsInterface(bo interface{}, tableName, tagName string, db *sql.DB) ([]interface{}, error) {
-	rows, err := getAllRows(tableName, nil, nil, 0, -1, db)
+func (helper SQLHelper) GetAllByTag(tagName string) ([]interface{}, error) {
+	rows, err := getAllRows(helper.TableName, nil, nil, 0, -1, helper.Handler.GetDatabase())
 	defer rows.Close()
 	if err != nil {
 		return nil, err
@@ -113,13 +126,137 @@ func GetAllAsInterface(bo interface{}, tableName, tagName string, db *sql.DB) ([
 	result := make([]interface{}, 0)
 	temp := make(map[string]interface{})
 	for rows.Next() {
-		temp, _ = RowToMap(rows)
-		i := reflect.New(reflect.TypeOf(bo))
-		MapToStruct(temp, tagName, i.Interface())
+		temp, _ = rowToMap(rows)
+		i := reflect.New(reflect.TypeOf(helper.Bo))
+		mapToStruct(temp, tagName, i.Interface())
 		result = append(result, i.Interface())
 	}
 	return result, err
 }
+
+func (helper SQLHelper) GetAllAsMap() ([]map[string]interface{}, error) {
+	rows, err := getAllRows(helper.TableName, nil, nil, 0, -1, helper.Handler.GetDatabase())
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]map[string]interface{}, 0)
+	temp := make(map[string]interface{})
+	for rows.Next() {
+		temp, err = rowToMap(rows)
+		result = append(result, temp)
+	}
+	return result, err
+}
+
+func (helper SQLHelper) GetByConditions(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tagName string) ([]interface{}, error) {
+	if tagName == "" {
+		tagName = helper.DefaultTagName
+	}
+	rows, err := getAllRows(helper.TableName, conditions, orderBy, limit, offset, helper.Handler.GetDatabase())
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+	result := make([]interface{}, 0)
+	temp := make(map[string]interface{})
+	for rows.Next() {
+		temp, _ = rowToMap(rows)
+		i := reflect.New(reflect.TypeOf(helper.Bo))
+		mapToStruct(temp, tagName, i.Interface())
+		result = append(result, i.Interface())
+	}
+	return result, err
+}
+
+func (helper SQLHelper) GetByConditionsAsMap(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tagName string) ([]map[string]interface{}, error) {
+	if tagName == "" {
+		tagName = helper.DefaultTagName
+	}
+	rows, err := getAllRows(helper.TableName, conditions, orderBy, limit, offset, helper.Handler.GetDatabase())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := make([]map[string]interface{}, 0)
+	temp := make(map[string]interface{})
+	for rows.Next() {
+		temp, err = rowToMap(rows)
+		result = append(result, temp)
+	}
+	return result, err
+}
+
+func (helper SQLHelper) Create(bo interface{}) (int64, error) {
+	result, err := createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+func (helper SQLHelper) CreateByTag(bo interface{}, tagName string) (int64, error) {
+	result, err := createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+func (helper SQLHelper) Update(bo interface{}) (int64, error) {
+	result, err := update(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
+	if err != nil {
+		return 0, nil
+	}
+	return result.RowsAffected()
+}
+
+func (helper SQLHelper) UpdateByTag(bo interface{}, tagName string) (int64, error) {
+	result, err := update(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
+	if err != nil {
+		return 0, nil
+	}
+	return result.RowsAffected()
+}
+
+func (helper SQLHelper) Delete(bo interface{}) (int64, error) {
+	conditions, err := getPrimaryKeysValues(bo, make(map[string]interface{}))
+	builder := DeleteBuilder{
+		TableName: helper.TableName,
+		WhereClause: WhereClauseBuilder{
+			Pair: conditions,
+		},
+	}
+	sql, err := builder.BuildDeleteQuery()
+	if err != nil {
+		return 0, err
+	}
+	result, err := execWithContext(sql, helper.Handler.GetDatabase())
+	if err != nil {
+		return 0, nil
+	}
+	return result.RowsAffected()
+}
+
+func (helper SQLHelper) DeleteByConditions(conditions map[string]interface{}) (int64, error) {
+	builder := DeleteBuilder{
+		TableName: helper.TableName,
+		WhereClause: WhereClauseBuilder{
+			Pair: conditions,
+		},
+	}
+	sql, err := builder.BuildDeleteQuery()
+	if err != nil {
+		return 0, err
+	}
+	result, err := execWithContext(sql, helper.Handler.GetDatabase())
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+
 
 func getAllRows(tableName string, conditions map[string]interface{}, orderBy map[string]string, limit, offset int, db *sql.DB) (*sql.Rows, error) {
 	builder := SelectQueryBuilder{
@@ -137,50 +274,6 @@ func getAllRows(tableName string, conditions map[string]interface{}, orderBy map
 		return nil, err
 	}
 	return queryWithContext(sql, db)
-}
-
-func GetByConditions(bo interface{}, conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tableName, tagName string, db *sql.DB) ([]interface{}, error) {
-	rows, err := getAllRows(tableName, conditions, orderBy, limit, offset, db)
-	defer rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]interface{}, 0)
-	temp := make(map[string]interface{})
-	for rows.Next() {
-		temp, _ = RowToMap(rows)
-		i := reflect.New(reflect.TypeOf(bo))
-		MapToStruct(temp, tagName, i.Interface())
-		result = append(result, i.Interface())
-	}
-	return result, err
-}
-
-func GetByConditionsAsMap(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tableName, tagName string, db *sql.DB) ([]map[string]interface{}, error) {
-	rows, err := getAllRows(tableName, conditions, orderBy, limit, offset, db)
-	defer rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	if err != nil {
-		return nil, err
-	}
-	result := make([]map[string]interface{}, 0)
-	temp := make(map[string]interface{})
-	for rows.Next() {
-		temp, err = RowToMap(rows)
-		result = append(result, temp)
-	}
-	return result, err
-}
-
-func Create(bo interface{}, tableName string, db *sql.DB) (sql.Result, error) {
-	return createByTag(bo, tableName, db, "json")
-}
-
-func CreateByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	return createByTag(bo, tableName, db, tagName)
 }
 
 func createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
@@ -220,43 +313,6 @@ func update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.R
 	return execWithContext(sql, db)
 }
 
-func UpdateByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	return update(bo, tableName, db, tableName)
-}
-
-func Update(bo interface{}, tableName string, db *sql.DB) (sql.Result, error) {
-	return update(bo, tableName, db, "json")
-}
-
-func DeleteByConditions(conditions map[string]interface{}, tableName string, db *sql.DB) (sql.Result, error) {
-	builder := DeleteBuilder{
-		TableName: tableName,
-		WhereClause: WhereClauseBuilder{
-			Pair: conditions,
-		},
-	}
-	sql, err := builder.BuildDeleteQuery()
-	if err != nil {
-		return nil, err
-	}
-	return execWithContext(sql, db)
-}
-
-func Delete(bo interface{}, tableName string, db *sql.DB) (sql.Result, error) {
-	conditions, err := getPrimaryKeysValues(bo, make(map[string]interface{}))
-	builder := DeleteBuilder{
-		TableName: tableName,
-		WhereClause: WhereClauseBuilder{
-			Pair: conditions,
-		},
-	}
-	sql, err := builder.BuildDeleteQuery()
-	if err != nil {
-		return nil, err
-	}
-	return execWithContext(sql, db)
-}
-
 func colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) map[string]interface{} {
 	numField := v.NumField()
 	for i := 0; i < numField; i++ {
@@ -285,12 +341,12 @@ func colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interf
 	return result
 }
 
-func RowsToStruct(rows *sql.Rows, i interface{}, tagName string) {
-	m, _ := RowToMap(rows)
-	MapToStruct(m, tagName, i)
+func rowsToStruct(rows *sql.Rows, i interface{}, tagName string) {
+	m, _ := rowToMap(rows)
+	mapToStruct(m, tagName, i)
 }
 
-func RowToMap(rows *sql.Rows) (map[string]interface{}, error) {
+func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
 	cols, _ := rows.Columns()
 	columns := make([]interface{}, len(cols))
 	columnPointers := make([]interface{}, len(cols))
@@ -321,7 +377,7 @@ func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
 
 func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 	ctx := context.Background()
-	result, err :=  db.ExecContext(ctx, sql)
+	result, err := db.ExecContext(ctx, sql)
 	if err != nil {
 		fmt.Printf("execute query %v failed", sql)
 	}
@@ -329,7 +385,7 @@ func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 }
 
 //TODO: need to use struct, not use pointer
-func MapToStruct(source map[string]interface{}, tagName string, target interface{}) {
+func mapToStruct(source map[string]interface{}, tagName string, target interface{}) {
 	val := reflect.ValueOf(target).Elem()
 	numField := val.NumField()
 	for i := 0; i < numField; i++ {

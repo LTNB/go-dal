@@ -9,18 +9,19 @@ import "database/sql"
  */
 
 type IDatabaseHelper interface {
-	GetOne(bo interface{}) error
-	GetOneByTag(bo interface{}, tagName string) error
-	GetOneByConditions(bo interface{}, conditions map[string]interface{}, tagName string) error
-	GetOneAsMap(bo interface{}) (map[string]interface{}, error)
-	GetAll() ([]interface{}, error)
-	GetAllByTag(tagName string) ([]interface{}, error)
-	GetAllAsMap() ([]map[string]interface{}, error)
-	GetByConditions(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tagName string) ([]interface{}, error)
-	GetByConditionsAsMap(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tableName, tagName string, db *sql.DB) ([]map[string]interface{}, error)
-	Create(bo interface{}) (int64, error)
-	CreateByTag(bo interface{}, tagName string) (sql.Result, error) //TODO testing
-	Update(bo interface{}) (int64, error) //TODO testing
-	UpdateByTag(bo interface{}, tagName string) (sql.Result, error) //TODO testing
-	Delete(id string) (int64, error)
+	GetOne(bo interface{}) error //done
+	GetOneByTag(bo interface{}, tagName string) error //done
+	GetOneByConditions(bo interface{}, conditions map[string]interface{}, tagName string) error //done
+	GetOneAsMap(bo interface{}) (map[string]interface{}, error) //done
+	GetAll() ([]interface{}, error) //done
+	GetAllByTag(tagName string) ([]interface{}, error) //done
+	GetAllAsMap() ([]map[string]interface{}, error) //done
+	GetByConditions(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tagName string) ([]interface{}, error) //done
+	GetByConditionsAsMap(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tableName, tagName string, db *sql.DB) ([]map[string]interface{}, error) //done
+	Create(bo interface{}) (int64, error) //done
+	CreateByTag(bo interface{}, tagName string) (int64, error) //done
+	Update(bo interface{}) (int64, error) //done
+	UpdateByTag(bo interface{}, tagName string) (int64, error) //done
+	Delete(id string) (int64, error) //done
+	DeleteByConditions(conditions map[string]interface{}) (int64, error) // done
 }
