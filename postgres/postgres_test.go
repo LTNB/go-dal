@@ -27,7 +27,7 @@ type AccountMock struct {
 func setup() {
 	conf := go_dal.Config{
 		DriverName:     "postgres",
-		DataSourceName: "postgres://lamtnb:Abc123@35.247.185.45:5432/template?sslmode=disable&client_encoding=UTF-8",
+		DataSourceName: "postgres://lamtnb:123456@localhost:5432/template?sslmode=disable&client_encoding=UTF-8",
 		MaxOpenConns:   5,
 		MaxLifeTime:    1 * time.Minute,
 		MaxIdleConns:   5,
