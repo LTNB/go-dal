@@ -20,8 +20,9 @@ import (
 
 func TestQueryBuilder(t *testing.T) {
 	whereMap := make(map[string]interface{})
-	whereMap["ac.id"] = "re.id"
 	whereMap["name"] = "abc"
+	joinCondition := make(map[string]string)
+	joinCondition["ac.id"] = "re.id"
 	orderBy := make(map[string]string)
 	orderBy["id"] = ""
 	orderBy["name"] = "DESC"
@@ -35,9 +36,12 @@ func TestQueryBuilder(t *testing.T) {
 			Pair:              whereMap,
 			NativeWhereClause: "name = 'abc'",
 		},
+		JoinCondition:JoinCondition{
+			Pair:         joinCondition,
+		},
 	}
 	sql, _ := builder.BuildSelectQuery();
-	assert.Equal(t, "SELECT id,name,age FROM account ac,receive re WHERE ac.id = re.id AND name = 'abc' AND name = 'abc' ORDER BY id ,name DESC LIMIT 1 OFFSET 10", sql, "done")
+	assert.Equal(t, "SELECT id,name,age FROM account ac,receive re WHERE name = 'abc' AND name = 'abc' AND ac.id = re.id ORDER BY id ,name DESC LIMIT 1 OFFSET 10", sql, "done")
 }
 
 func TestInsertBuilder(t *testing.T) {

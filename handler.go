@@ -1,6 +1,9 @@
 package go_dal
 
-import "database/sql"
+import (
+	"database/sql"
+	"reflect"
+)
 
 /**
  * @author LTNB (baolam0307@gmail.com)
@@ -9,4 +12,5 @@ import "database/sql"
  */
 type IDatabaseHelper interface {
 	GetDatabase() *sql.DB
+	TypeMapping(data interface{}, field reflect.Value)
 }

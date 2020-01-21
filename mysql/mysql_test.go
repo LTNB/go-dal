@@ -1,4 +1,4 @@
-package postgres
+package mysql
 
 import (
 	go_dal "github.com/LTNB/go-dal"
@@ -23,13 +23,12 @@ type AccountMock struct {
 	FullName string `json:"full_name" sql:"full_name"`
 	Role     string `json:"role" sql:"role"`
 	Active   bool   `json:"active" sql:"active"`
-	Date    time.Time `json:"date"`
 }
 
 func setup() {
 	conf := go_dal.Config{
-		DriverName:     "postgres",
-		DataSourceName: "postgres://lamtnb:Abc123@35.247.185.45:5432/template?sslmode=disable&client_encoding=UTF-8",
+		DriverName:     "mysql",
+		DataSourceName: "root:12345678@tcp(127.0.0.1:3306)/template",
 		MaxOpenConns:   5,
 		MaxLifeTime:    1 * time.Minute,
 		MaxIdleConns:   5,
@@ -110,7 +109,7 @@ func TestGetAsMap(t *testing.T) {
 	accountHelper.Create(account)
 	bo := AccountMock{Id: "1"}
 	result, err := accountHelper.GetOneAsMap(&bo)
-	assert.Equal(t, "baolam0307@gmail.com", result["email"], "success")
+	assert.Equal(t, "baolam0307@gmail.com", string(result["email"].([]byte)), "success")
 	assert.Nil(t, err, "success")
 	accountHelper.Delete(bo)
 }
@@ -183,8 +182,8 @@ func TestGetAllAsMap(t *testing.T) {
 	accountHelper.Create(account)
 	accountHelper.Create(account1)
 	result, err := accountHelper.GetAllAsMap()
-	assert.Equal(t, "baolam0307@gmail.com", result[0]["email"], "success")
-	assert.Equal(t, "lamtnb@gmail.com", result[1]["email"], "success")
+	assert.Equal(t, "baolam0307@gmail.com", string(result[0]["email"].([]byte)), "success")
+	assert.Equal(t, "lamtnb@gmail.com", string(result[1]["email"].([]byte)), "success")
 	assert.Nil(t, err, "success")
 	accountHelper.Delete(account)
 	accountHelper.Delete(account1)
@@ -249,7 +248,7 @@ func TestGetByConditionsAsMap(t *testing.T) {
 	result, err := accountHelper.GetByConditionsAsMap(nil, orderBy, limit, offset, "")
 
 	assert.Equal(t, 1, len(result), "success")
-	assert.Equal(t, "lamtnb@gmail.com", result[0]["email"] , "success")
+	assert.Equal(t, "lamtnb@gmail.com", string(result[0]["email"].([]byte)) , "success")
 	assert.Nil(t, err, "success")
 }
 
@@ -260,7 +259,6 @@ func TestCreateAndDelete(t *testing.T) {
 		FullName: "Ta Ngoc Bao Lam",
 		Role:     "admin",
 		Active:   true,
-		Date:  time.Now(),
 	}
 	_, err := accountHelper.Create(account)
 	assert.Nil(t, err, "err must be nil")
