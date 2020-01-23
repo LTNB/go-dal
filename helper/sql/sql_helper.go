@@ -73,35 +73,26 @@ func (helper Helper) GetOneAsMap(bo interface{}) (map[string]interface{}, error)
 
 }
 
-func getPrimaryKeysValues(bo interface{}, result map[string]interface{}) (map[string]interface{}, error) {
+func getPrimaryKeysValues(boType reflect.Type, boValue reflect.Value, result map[string]interface{}) map[string]interface{} {
 	primaryTagName := "primary"
-	var err error
-	typ := reflect.TypeOf(bo)
-	val := reflect.ValueOf(bo)
-	if typ.Kind() == reflect.Ptr {
-		typ = typ.Elem()
-		val = val.Elem()
-	}
-
-	for i := 0; i < typ.NumField(); i++ {
-		field := typ.Field(i)
+	for i := 0; i < boType.NumField(); i++ {
+		field := boType.Field(i)
 		if field.Type.Kind() == reflect.Struct {
-			result, err = getPrimaryKeysValues(field, result)
+			result = getPrimaryKeysValues(field.Type, boValue.Field(i), result)
+		} else {
+			primaryTag := strings.Split(field.Tag.Get(primaryTagName), ",")[0]
+			if primaryTag != "" {
+				result[primaryTag] = boValue.Field(i).Interface()
+			}
 		}
-		if field.Type.Kind() == reflect.Ptr {
-			continue
-		}
-		primaryTag := strings.Split(field.Tag.Get(primaryTagName), ",")[0]
-		if primaryTag == "" {
-			continue
-		}
-		result[primaryTag] = val.Field(i).Interface()
+
 	}
-	return result, err
+	return result
 }
 
+//bo = ptr
 func getOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) {
-	primaryKeys, _ := getPrimaryKeysValues(bo, make(map[string]interface{}, 0))
+	primaryKeys:= getPrimaryKeysValues(reflect.TypeOf(bo).Elem(), reflect.ValueOf(bo).Elem(), make(map[string]interface{}, 0))
 	selectBuilder := SelectQueryBuilder{
 		SelectFields: nil,
 		From:         []string{tableName},
@@ -110,7 +101,10 @@ func getOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) 
 		},
 		Limit: 1,
 	}
-	sql, _ := selectBuilder.BuildSelectQuery()
+	sql, err := selectBuilder.BuildSelectQuery()
+	if err != nil {
+		return nil, err
+	}
 	return queryWithContext(sql, db)
 }
 
@@ -129,7 +123,7 @@ func (helper Helper) GetAllByTag(tagName string) ([]interface{}, error) {
 	for rows.Next() {
 		temp, _ = rowToMap(rows)
 		i := reflect.New(reflect.TypeOf(helper.Bo))
-		helper.mapToStruct(temp, tagName, i.Interface())
+		helper.mapToStruct(temp, tagName, reflect.ValueOf(i.Interface()).Elem())
 		result = append(result, i.Interface())
 	}
 	return result, err
@@ -164,7 +158,7 @@ func (helper Helper) GetByConditions(conditions map[string]interface{}, orderBy 
 	for rows.Next() {
 		temp, _ = rowToMap(rows)
 		i := reflect.New(reflect.TypeOf(helper.Bo))
-		helper.mapToStruct(temp, tagName, i.Interface())
+		helper.mapToStruct(temp, tagName, reflect.ValueOf(i.Interface()).Elem())
 		result = append(result, i.Interface())
 	}
 	return result, err
@@ -189,7 +183,7 @@ func (helper Helper) GetByConditionsAsMap(conditions map[string]interface{}, ord
 }
 
 func (helper Helper) Create(bo interface{}) (int64, error) {
-	result, err := createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
+	result, err := helper.createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
 	if err != nil {
 		return 0, err
 	}
@@ -197,7 +191,7 @@ func (helper Helper) Create(bo interface{}) (int64, error) {
 }
 
 func (helper Helper) CreateByTag(bo interface{}, tagName string) (int64, error) {
-	result, err := createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
+	result, err := helper.createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
 	if err != nil {
 		return 0, err
 	}
@@ -205,7 +199,7 @@ func (helper Helper) CreateByTag(bo interface{}, tagName string) (int64, error) 
 }
 
 func (helper Helper) Update(bo interface{}) (int64, error) {
-	result, err := update(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
+	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
 	if err != nil {
 		return 0, nil
 	}
@@ -213,7 +207,7 @@ func (helper Helper) Update(bo interface{}) (int64, error) {
 }
 
 func (helper Helper) UpdateByTag(bo interface{}, tagName string) (int64, error) {
-	result, err := update(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
+	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
 	if err != nil {
 		return 0, nil
 	}
@@ -221,7 +215,7 @@ func (helper Helper) UpdateByTag(bo interface{}, tagName string) (int64, error) 
 }
 
 func (helper Helper) Delete(bo interface{}) (int64, error) {
-	conditions, err := getPrimaryKeysValues(bo, make(map[string]interface{}))
+	conditions := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}))
 	builder := DeleteBuilder{
 		TableName: helper.TableName,
 		WhereClause: WhereClauseBuilder{
@@ -275,8 +269,8 @@ func getAllRows(tableName string, conditions map[string]interface{}, orderBy map
 	return queryWithContext(sql, db)
 }
 
-func createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	data := colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+func (helper Helper) createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
+	data := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
 	var keys []string
 	var value []interface{}
 	for k, v := range data {
@@ -292,12 +286,9 @@ func createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (
 	return execWithContext(sql, db)
 }
 
-func update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	data := colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
-	pairWhereClause, err := getPrimaryKeysValues(bo, map[string]interface{}{})
-	if err != nil {
-		return nil, err
-	}
+func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
+	data := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	pairWhereClause := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
 	builder := UpdateBuilder{
 		TableName: tableName,
 		WhereClause: WhereClauseBuilder{
@@ -312,38 +303,26 @@ func update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.R
 	return execWithContext(sql, db)
 }
 
-func colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) map[string]interface{} {
+//data type from struct to data type sql
+func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) map[string]interface{} {
 	numField := v.NumField()
 	for i := 0; i < numField; i++ {
 		field := t.Field(i)
 		col := strings.Split(field.Tag.Get(tagName), ",")[0]
 		if field.Type.Kind() == reflect.Struct {
-			switch field.Type {
-			case reflect.TypeOf(time.Time{}):
-				//call format(input) which's return only one response
-				res := v.Field(i).MethodByName("Format").Call([]reflect.Value{reflect.ValueOf(time.RFC1123)})
-				result[col] = res[0].String()
-				break
-
-			default:
-				result = colsStructMapping(field.Type, v.Field(i), result, tagName)
+			if strings.Split(t.Field(i).Tag.Get("promoted"), ",")[0] == "true" {
+				result = helper.colsStructMapping(field.Type, v.Field(i), result, tagName)
+			} else {
+				switch field.Type {
+				case reflect.TypeOf(time.Time{}):
+					//call format(input) which's return only one response
+					res := v.Field(i).MethodByName("Format").Call([]reflect.Value{reflect.ValueOf(time.RFC3339)})
+					result[col] = res[0].String()
+					break
+				}
 			}
 		} else {
-			switch field.Type.Kind() {
-			case reflect.Int64, reflect.Int32, reflect.Int16, reflect.Int8, reflect.Int:
-				result[col] = v.Field(i).Int()
-				break
-			case reflect.String:
-				result[col] = v.Field(i).String()
-				break
-			case reflect.Bool:
-				result[col] = v.Field(i).Bool()
-				break
-			case reflect.Uint64, reflect.Uint32, reflect.Uint16, reflect.Uint8:
-				result[col] = v.Field(i).Uint()
-				break
-			}
-
+			result[col] = v.Field(i).Interface()
 		}
 	}
 	return result
@@ -351,7 +330,28 @@ func colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interf
 
 func (helper Helper) rowsToStruct(rows *sql.Rows, i interface{}, tagName string) {
 	m, _ := rowToMap(rows)
-	helper.mapToStruct(m, tagName, i)
+	if m == nil {
+		return
+	}
+	helper.mapToStruct(m, tagName, reflect.ValueOf(i).Elem())
+}
+
+func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
+	ctx := context.Background()
+	rows, err := db.QueryContext(ctx, sql)
+	if err != nil {
+		fmt.Printf("execute query %v failed", sql)
+	}
+	return rows, err
+}
+
+func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
+	ctx := context.Background()
+	result, err := db.ExecContext(ctx, sql)
+	if err != nil {
+		fmt.Printf("execute query %v failed", sql)
+	}
+	return result, err
 }
 
 func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
@@ -373,49 +373,18 @@ func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
 	}
 	return m, nil
 }
-
-func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
-	ctx := context.Background()
-	rows, err := db.QueryContext(ctx, sql)
-	if err != nil {
-		fmt.Printf("execute query %v failed", sql)
-	}
-	return rows, err
-}
-
-func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
-	ctx := context.Background()
-	result, err := db.ExecContext(ctx, sql)
-	if err != nil {
-		fmt.Printf("execute query %v failed", sql)
-	}
-	return result, err
-}
-
-func (helper Helper) mapToStruct(source map[string]interface{}, tagName string, target interface{}) {
-	val := reflect.ValueOf(target).Elem()
-	numField := val.NumField()
+func (helper Helper) mapToStruct(source map[string]interface{}, tagName string, target reflect.Value) {
+	numField := target.NumField()
 	for i := 0; i < numField; i++ {
-		field := val.Field(i)
+		field := target.Field(i)
 		if !field.CanSet() {
 			continue
 		}
-
-		if field.Kind() == reflect.Struct {
-			for j := 0; j < field.NumField(); j++ {
-				fieldName := strings.Split(field.Type().Field(j).Tag.Get(tagName), ",")[0]
-				if item, ok := source[fieldName]; ok {
-					if field.Field(j).CanSet() {
-						helper.Handler.TypeMapping(item, field.Field(j))
-					}
-				}
-			}
-			continue
-		}
-		fieldName := strings.Split(val.Type().Field(i).Tag.Get(tagName), ",")[0]
-		if item, ok := source[fieldName]; ok {
-			helper.Handler.TypeMapping(item, val.Field(i))
+		if field.Type().Kind() == reflect.Struct && strings.Split(target.Type().Field(i).Tag.Get("promoted"), ",")[0] == "true" {
+			helper.mapToStruct(source, tagName, field)
+		} else {
+			fieldName := strings.Split(target.Type().Field(i).Tag.Get(tagName), ",")[0]
+			helper.Handler.TypeMapping(source[fieldName], target.Field(i))
 		}
 	}
 }
-

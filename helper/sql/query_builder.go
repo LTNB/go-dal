@@ -102,7 +102,6 @@ func (builder WhereClauseBuilder) buildWhereClause(result string) string {
 		} else {
 			result = result + " %v"
 		}
-
 		result = fmt.Sprintf(result, builder.NativeWhereClause)
 	}
 	return result
