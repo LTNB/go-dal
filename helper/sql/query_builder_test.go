@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"reflect"
 	"testing"
 )
 
@@ -113,9 +114,8 @@ func TestGetPrimaryKeysValues(t *testing.T){
 		Name: "name",
 	}
 
-	result, err := getPrimaryKeysValues(bo, map[string]interface{}{})
+	result := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
 	fmt.Println(result)
-	assert.Nil(t, err, "done")
 }
 
 //func TestComparePerformance(t *testing.T){
