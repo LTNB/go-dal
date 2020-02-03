@@ -373,6 +373,8 @@ func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
 	}
 	return m, nil
 }
+
+
 func (helper Helper) mapToStruct(source map[string]interface{}, tagName string, target reflect.Value) {
 	numField := target.NumField()
 	for i := 0; i < numField; i++ {
