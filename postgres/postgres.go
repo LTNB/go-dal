@@ -23,5 +23,8 @@ func (helper Helper) GetDatabase() *sql.DB {
 
 //data type from sql ==> datatype from struct
 func (helper Helper) TypeMapping(data interface{}, field reflect.Value) {
+	if data == nil {
+		return
+	}
 	field.Set(reflect.ValueOf(data))
 }
