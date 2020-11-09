@@ -15,7 +15,7 @@ import (
  */
 
 /**
- * sometimes the where-clause will be exchanged index element it's, so test case will be failed, but it not a problem
+ * sometimes the where-clause will be exchanged index element it's, so test case will be failed, but it's not a problem
  *
  */
 
