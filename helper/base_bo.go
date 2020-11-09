@@ -18,9 +18,9 @@ type BaseBo struct {
 	Id interface{} `json:"id" primary:"id"`
 }
 
-func (bo *BaseBo) UUIDGenerate() {
+func UUIDGenerate() string {
 	id := uuid.New()
-	bo.Id = id.String()
+	return id.String()
 }
 
 /**

@@ -18,6 +18,7 @@ type IDatabaseHelper interface {
 	GetByConditionsAsMap(conditions map[string]interface{}, orderBy map[string]string, limit, offset int, tagName string) ([]map[string]interface{}, error) //done
 	Create(bo interface{}) (int64, error) //done
 	CreateByTag(bo interface{}, tagName string) (int64, error) //done
+	CreateBatch(boList []interface{}) (int64, error)
 	Update(bo interface{}) (int64, error) //done
 	UpdateByTag(bo interface{}, tagName string) (int64, error) //done
 	Delete(bo interface{}) (int64, error) //done

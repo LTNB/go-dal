@@ -296,6 +296,37 @@ func TestCreateAndDelete(t *testing.T) {
 	assert.Nil(t, err, "err must be nil")
 }
 
+/**
+ * create batch object
+ */
+func TestCreateBatch(t *testing.T) {
+	account := AccountMock{
+		BaseBo:   BaseBo{Id: "1"},
+		Auditor:  Auditor{Date: time.Now()},
+		Email:    "baolam0307@gmail.com",
+		FullName: "Ta Ngoc Bao Lam",
+		Role:     "UnixDate",
+		Active:   true,
+	}
+	account2 := AccountMock{
+		BaseBo:   BaseBo{Id: "2"},
+		Auditor:  Auditor{Date: time.Now()},
+		Email:    "lamtnb@gmail.com",
+		FullName: "LTNB",
+		Role:     "UnixDate",
+		Active:   true,
+	}
+	boList := []interface{}{account, account2}
+	effected, err := accountHelper.CreateBatch(boList)
+	assert.Nil(t, err, "err must be nil")
+	assert.Equal(t, effected,int64(2))
+
+	//delete data test
+	conditions := make(map[string]interface{})
+	conditions["active"] = true
+	_, err = accountHelper.DeleteByConditions(conditions)
+}
+
 func TestCreateByTagAndDelete(t *testing.T) {
 	account := AccountMock{
 		BaseBo:   BaseBo{Id: "1"},

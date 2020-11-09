@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	go_dal "github.com/LTNB/go-dal"
+	sql_helper "github.com/LTNB/go-dal/helper"
 	"reflect"
 	"strings"
 	"time"
@@ -92,7 +93,7 @@ func getPrimaryKeysValues(boType reflect.Type, boValue reflect.Value, result map
 
 //bo = ptr
 func getOneRow(bo interface{}, tableName string, db *sql.DB) (*sql.Rows, error) {
-	primaryKeys:= getPrimaryKeysValues(reflect.TypeOf(bo).Elem(), reflect.ValueOf(bo).Elem(), make(map[string]interface{}, 0))
+	primaryKeys := getPrimaryKeysValues(reflect.TypeOf(bo).Elem(), reflect.ValueOf(bo).Elem(), make(map[string]interface{}, 0))
 	selectBuilder := SelectQueryBuilder{
 		SelectFields: nil,
 		From:         []string{tableName},
@@ -190,6 +191,20 @@ func (helper Helper) Create(bo interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+/**
+ * create batch boList
+ */
+func (helper Helper) CreateBatch(boList []interface{}) (int64, error) {
+	result, err := helper.createBatchByTag(boList, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
+/**
+ * create by field tag ( default json tag)
+ */
 func (helper Helper) CreateByTag(bo interface{}, tagName string) (int64, error) {
 	result, err := helper.createByTag(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
 	if err != nil {
@@ -198,6 +213,9 @@ func (helper Helper) CreateByTag(bo interface{}, tagName string) (int64, error) 
 	return result.RowsAffected()
 }
 
+/**
+ * update data change in bo ( default json tag )
+ */
 func (helper Helper) Update(bo interface{}) (int64, error) {
 	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
 	if err != nil {
@@ -206,6 +224,9 @@ func (helper Helper) Update(bo interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+/**
+ * update data change in bo by tag
+ */
 func (helper Helper) UpdateByTag(bo interface{}, tagName string) (int64, error) {
 	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
 	if err != nil {
@@ -214,6 +235,9 @@ func (helper Helper) UpdateByTag(bo interface{}, tagName string) (int64, error) 
 	return result.RowsAffected()
 }
 
+/**
+ * delete by bo condition
+ */
 func (helper Helper) Delete(bo interface{}) (int64, error) {
 	conditions := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}))
 	builder := DeleteBuilder{
@@ -233,6 +257,9 @@ func (helper Helper) Delete(bo interface{}) (int64, error) {
 	return result.RowsAffected()
 }
 
+/**
+ * delete by map conditions
+ */
 func (helper Helper) DeleteByConditions(conditions map[string]interface{}) (int64, error) {
 	builder := DeleteBuilder{
 		TableName: helper.TableName,
@@ -251,6 +278,11 @@ func (helper Helper) DeleteByConditions(conditions map[string]interface{}) (int6
 	return result.RowsAffected()
 }
 
+/**
+ * find all by condition
+ * @conditions: mapping with table
+ * @orderBy: map[key] = "ASC" / "DESC"
+ */
 func getAllRows(tableName string, conditions map[string]interface{}, orderBy map[string]string, limit, offset int, db *sql.DB) (*sql.Rows, error) {
 	builder := SelectQueryBuilder{
 		From: []string{tableName},
@@ -269,8 +301,14 @@ func getAllRows(tableName string, conditions map[string]interface{}, orderBy map
 	return queryWithContext(sql, db)
 }
 
+/**
+ * create bo by tag
+ */
 func (helper Helper) createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	data := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	data, err := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	if err != nil {
+		return nil, err
+	}
 	var keys []string
 	var value []interface{}
 	for k, v := range data {
@@ -282,12 +320,66 @@ func (helper Helper) createByTag(bo interface{}, tableName string, db *sql.DB, t
 		Keys:      keys,
 		Values:    [][]interface{}{value},
 	}
-	sql, _ := insertBuilder.BuildInsertQuery()
+	sql, err := insertBuilder.BuildInsertQuery()
+	if err != nil {
+		return nil, err
+	}
 	return execWithContext(sql, db)
 }
 
+/**
+ * create list bo by tag
+ */
+func (helper Helper) createBatchByTag(boList []interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
+	var keys []string
+	keyMap := make(map[int]string)
+	var batchValue [][]interface{}
+	for i, bo := range boList {
+		data, err := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+		if err != nil {
+			return nil, err
+		}
+		value := make([]interface{}, 6)
+		count := 0
+		for k, v := range data {
+			if i == 0 {
+				keys = append(keys, k)
+				value[count] = v
+				keyMap[count] = k
+				count++
+			} else {
+				for x, y := range keyMap {
+					if y == k {
+						value[x] = v
+						break
+					}
+				}
+			}
+		}
+		batchValue = append(batchValue, value)
+
+	}
+
+	insertBuilder := InsertBuilder{
+		TableName: tableName,
+		Keys:      keys,
+		Values:    batchValue,
+	}
+	sql, err := insertBuilder.BuildInsertQuery()
+	if err != nil {
+		return nil, err
+	}
+	return execWithContext(sql, db)
+}
+
+/**
+ * update bo by tag
+ */
 func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
-	data := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	data, err := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	if err != nil {
+		return nil, err
+	}
 	pairWhereClause := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
 	builder := UpdateBuilder{
 		TableName: tableName,
@@ -303,21 +395,31 @@ func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagNam
 	return execWithContext(sql, db)
 }
 
-//data type from struct to data type sql
-func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) map[string]interface{} {
+/**
+ * data type from struct to data type sql
+ */
+//TODO ==> update mapping base bo with UUID and auditor
+func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) (map[string]interface{}, error) {
+	var err error
 	numField := v.NumField()
 	for i := 0; i < numField; i++ {
 		field := t.Field(i)
-		col := strings.Split(field.Tag.Get(tagName), ",")[0]
+		tagNameStruct := strings.Split(field.Tag.Get(tagName), ",")
+		if tagNameStruct == nil || len(tagNameStruct) != 1 {
+			err = fmt.Errorf("tag name `%v` is empty or not unique.", tagName)
+			goto End
+		}
+		col := tagNameStruct[0]
 		if field.Type.Kind() == reflect.Struct {
 			if strings.Split(t.Field(i).Tag.Get("promoted"), ",")[0] == "true" {
-				result = helper.colsStructMapping(field.Type, v.Field(i), result, tagName)
+				result, err = helper.colsStructMapping(field.Type, v.Field(i), result, tagName)
 			} else {
 				switch field.Type {
 				case reflect.TypeOf(time.Time{}):
 					//call format(input) which's return only one response
-					res := v.Field(i).MethodByName("Format").Call([]reflect.Value{reflect.ValueOf(time.RFC3339)})
+					res := helper.timeMapping(v.Field(i))
 					result[col] = res[0].String()
+				case reflect.TypeOf(sql_helper.BaseBo{}):
 					break
 				}
 			}
@@ -325,9 +427,20 @@ func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result m
 			result[col] = v.Field(i).Interface()
 		}
 	}
-	return result
+End:
+	return result, err
 }
 
+/**
+ * mapping default time.Time ( RFC3339 )
+ */
+func (helper Helper) timeMapping(v reflect.Value) []reflect.Value {
+	return v.MethodByName("Format").Call([]reflect.Value{reflect.ValueOf(time.RFC3339)})
+}
+
+/*
+ * convert @rows to @i: struct depend on @tagName
+ */
 func (helper Helper) rowsToStruct(rows *sql.Rows, i interface{}, tagName string) {
 	m, _ := rowToMap(rows)
 	if m == nil {
@@ -336,6 +449,10 @@ func (helper Helper) rowsToStruct(rows *sql.Rows, i interface{}, tagName string)
 	helper.mapToStruct(m, tagName, reflect.ValueOf(i).Elem())
 }
 
+/*
+ * query with context
+ */
+//TODO ==> audit log in here...!
 func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
 	ctx := context.Background()
 	rows, err := db.QueryContext(ctx, sql)
@@ -345,6 +462,12 @@ func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
 	return rows, err
 }
 
+
+/*
+ * execute with context
+ */
+
+//TODO ==> audit log in here...!
 func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 	ctx := context.Background()
 	result, err := db.ExecContext(ctx, sql)
@@ -354,6 +477,9 @@ func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 	return result, err
 }
 
+/**
+ * convert row to map
+ */
 func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
 	cols, _ := rows.Columns()
 	columns := make([]interface{}, len(cols))
@@ -374,7 +500,9 @@ func rowToMap(rows *sql.Rows) (map[string]interface{}, error) {
 	return m, nil
 }
 
-
+/**
+ * convert map to struct by tagName
+ */
 func (helper Helper) mapToStruct(source map[string]interface{}, tagName string, target reflect.Value) {
 	numField := target.NumField()
 	for i := 0; i < numField; i++ {
