@@ -1,7 +1,6 @@
 package sql
 
 import (
-	"fmt"
 	"github.com/stretchr/testify/assert"
 	"os"
 	"reflect"
@@ -41,7 +40,7 @@ func TestQueryBuilder(t *testing.T) {
 			Pair:         joinCondition,
 		},
 	}
-	sql, _ := builder.BuildSelectQuery();
+	sql, _ := builder.BuildSelectQuery()
 	assert.Equal(t, "SELECT id,name,age FROM account ac,receive re WHERE name = 'abc' AND name = 'abc' AND ac.id = re.id ORDER BY id ,name DESC LIMIT 1 OFFSET 10", sql, "done")
 }
 
@@ -114,15 +113,8 @@ func TestGetPrimaryKeysValues(t *testing.T){
 		Name: "name",
 	}
 
-	result := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
-	fmt.Println(result)
+	getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
 }
-
-//func TestComparePerformance(t *testing.T){
-//	s := time.Now().Nanosecond()
-//	fmt.Println("SELECT id,name,age FROM account ac,receive re WHERE name = 'abc' AND ac.id = re.id AND name = 'abc' ORDER BY id ,name DESC LIMIT 1 OFFSET 10")
-//	fmt.Printf("builder duration: %v", (time.Now().Nanosecond()- s))
-//}
 
 func TestMain(m *testing.M) {
 	r := m.Run()

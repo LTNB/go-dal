@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	go_dal "github.com/LTNB/go-dal"
+	goDal "github.com/LTNB/go-dal"
 	"github.com/LTNB/go-dal/helper/sql"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -34,7 +34,7 @@ type AccountMock struct {
 }
 
 func setup() {
-	conf := go_dal.Config{
+	conf := goDal.Config{
 		DriverName:     "postgres",
 		DataSourceName: "postgres://postgres:123456@localhost:5432/template?sslmode=disable&client_encoding=UTF-8",
 		MaxOpenConns:   5,
@@ -53,7 +53,7 @@ func setup() {
 }
 
 func TestConnection(t *testing.T) {
-	db := go_dal.GetDatabase()
+	db := goDal.GetDatabase()
 	err := db.Ping()
 	assert.Nil(t, err, "connected")
 
@@ -68,13 +68,16 @@ func TestGetOne(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	bo := AccountMock{}
 	bo.Id = "1"
-	accountHelper.GetOne(&bo)
-
+	err = accountHelper.GetOne(&bo)
+	assert.Nil(t, err, "nothing")
 	assert.Equal(t, "baolam0307@gmail.com", bo.Email, "success")
-	accountHelper.Delete(bo)
+	_, err = accountHelper.Delete(bo)
+	assert.Nil(t, err, "nothing")
+
 }
 
 //
@@ -87,12 +90,15 @@ func TestGetOneByTag(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	bo := AccountMock{}
 	bo.Id = "1"
-	accountHelper.GetOneByTag(&bo, "json")
+	err = accountHelper.GetOneByTag(&bo, "json")
+	assert.Nil(t, err, "nothing")
 	assert.Equal(t, "baolam0307@gmail.com", bo.Email, "success")
-	accountHelper.Delete(bo)
+	_, err = accountHelper.Delete(bo)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetOneByConditions(t *testing.T) {
@@ -104,13 +110,16 @@ func TestGetOneByConditions(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	bo := AccountMock{}
 	conditions := make(map[string]interface{})
 	conditions["role"] = "admin"
-	accountHelper.GetOneByConditions(&bo, conditions, "json")
+	err = accountHelper.GetOneByConditions(&bo, conditions, "json")
+	assert.Nil(t, err, "nothing")
 	assert.Equal(t, "baolam0307@gmail.com", bo.Email, "success")
-	accountHelper.Delete(bo)
+	_, err = accountHelper.Delete(bo)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetAsMap(t *testing.T) {
@@ -122,13 +131,15 @@ func TestGetAsMap(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	bo := AccountMock{}
 	bo.Id = "1"
 	result, err := accountHelper.GetOneAsMap(&bo)
 	assert.Equal(t, "baolam0307@gmail.com", result["email"], "success")
 	assert.Nil(t, err, "success")
-	accountHelper.Delete(bo)
+	_, err = accountHelper.Delete(bo)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetAll(t *testing.T) {
@@ -148,14 +159,18 @@ func TestGetAll(t *testing.T) {
 		Role:     "user",
 		Active:   false,
 	}
-	accountHelper.Create(account)
-	accountHelper.Create(account1)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
+	_, err =accountHelper.Create(account1)
+	assert.Nil(t, err, "nothing")
 	result, err := accountHelper.GetAll()
+	assert.Nil(t, err, "nothing")
 
 	assert.Equal(t, 2, len(result), "success")
-	assert.Nil(t, err, "success")
-	accountHelper.Delete(account)
-	accountHelper.Delete(account1)
+	_, err = accountHelper.Delete(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetAllByTag(t *testing.T) {
@@ -175,14 +190,18 @@ func TestGetAllByTag(t *testing.T) {
 		Role:     "user",
 		Active:   false,
 	}
-	accountHelper.Create(account)
-	accountHelper.Create(account1)
+	_, err :=accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Create(account1)
+	assert.Nil(t, err, "nothing")
 	result, err := accountHelper.GetAllByTag("json")
 
 	assert.Equal(t, 2, len(result), "success")
-	assert.Nil(t, err, "success")
-	accountHelper.Delete(account)
-	accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetAllAsMap(t *testing.T) {
@@ -202,14 +221,18 @@ func TestGetAllAsMap(t *testing.T) {
 		Role:     "user",
 		Active:   false,
 	}
-	accountHelper.Create(account)
-	accountHelper.Create(account1)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Create(account1)
+	assert.Nil(t, err, "nothing")
 	result, err := accountHelper.GetAllAsMap()
 	assert.Equal(t, "baolam0307@gmail.com", result[0]["email"], "success")
 	assert.Equal(t, "lamtnb@gmail.com", result[1]["email"], "success")
 	assert.Nil(t, err, "success")
-	accountHelper.Delete(account)
-	accountHelper.Delete(account1)
+	_, err = accountHelper.Delete(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetByConditions(t *testing.T) {
@@ -229,10 +252,10 @@ func TestGetByConditions(t *testing.T) {
 		Role:     "user",
 		Active:   false,
 	}
-	accountHelper.Create(account)
-	accountHelper.Create(account1)
-	defer accountHelper.Delete(account)
-	defer accountHelper.Delete(account1)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Create(account1)
+	assert.Nil(t, err, "nothing")
 
 	conditions := make(map[string]interface{})
 	conditions["role"] = "admin"
@@ -243,7 +266,10 @@ func TestGetByConditions(t *testing.T) {
 	result, err := accountHelper.GetByConditions(conditions, orderBy, limit, offset, "")
 
 	assert.Equal(t, 1, len(result), "success")
-	assert.Nil(t, err, "success")
+	assert.Nil(t, err, "nothing")
+	_,err = accountHelper.Delete(account)
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestGetByConditionsAsMap(t *testing.T) {
@@ -263,10 +289,8 @@ func TestGetByConditionsAsMap(t *testing.T) {
 		Role:     "user",
 		Active:   false,
 	}
-	accountHelper.Create(account)
-	accountHelper.Create(account1)
-	defer accountHelper.Delete(account)
-	defer accountHelper.Delete(account1)
+	_, err := accountHelper.Create(account)
+	_, err = accountHelper.Create(account1)
 
 	orderBy := make(map[string]string)
 	orderBy["full_name"] = "ASC"
@@ -276,7 +300,11 @@ func TestGetByConditionsAsMap(t *testing.T) {
 
 	assert.Equal(t, 1, len(result), "success")
 	assert.Equal(t, "baolam0307@gmail.com", result[0]["email"], "success")
-	assert.Nil(t, err, "success")
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account)
+	assert.Nil(t, err, "nothing")
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestCreateAndDelete(t *testing.T) {
@@ -319,7 +347,7 @@ func TestCreateBatch(t *testing.T) {
 	boList := []interface{}{account, account2}
 	effected, err := accountHelper.CreateBatch(boList)
 	assert.Nil(t, err, "err must be nil")
-	assert.Equal(t, effected,int64(2))
+	assert.Equal(t, effected, int64(2))
 
 	//delete data test
 	conditions := make(map[string]interface{})
@@ -353,7 +381,8 @@ func TestUpdate(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	account = AccountMock{
 		BaseBo:   BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
@@ -362,14 +391,15 @@ func TestUpdate(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	_, err := accountHelper.Update(account)
-	assert.Nil(t, err, "success")
+	_, err = accountHelper.Update(account)
+	assert.Nil(t, err, "nothing")
 	account1 := AccountMock{}
 	account1.Id = "1"
 	err = accountHelper.GetOne(&account1)
-	assert.Nil(t, err, "success")
+	assert.Nil(t, err, "nothing")
 	assert.Equal(t, "lamtnb@scommerce.asia", account1.Email, "success")
-	accountHelper.Delete(account1)
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestUpdateByTag(t *testing.T) {
@@ -381,7 +411,8 @@ func TestUpdateByTag(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
 	account = AccountMock{
 		BaseBo:   BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
@@ -390,14 +421,15 @@ func TestUpdateByTag(t *testing.T) {
 		Role:     "admin",
 		Active:   true,
 	}
-	_, err := accountHelper.UpdateByTag(account, "sql")
-	assert.Nil(t, err, "success")
+	_, err = accountHelper.UpdateByTag(account, "sql")
+	assert.Nil(t, err, "nothing")
 	account1 := AccountMock{}
 	account1.Id = "1"
 	err = accountHelper.GetOne(&account1)
-	assert.Nil(t, err, "success")
+	assert.Nil(t, err, "nothing")
 	assert.Equal(t, "lamtnb@scommerce.asia", account1.Email, "success")
-	accountHelper.Delete(account1)
+	_, err = accountHelper.Delete(account1)
+	assert.Nil(t, err, "nothing")
 }
 
 func TestMain(m *testing.M) {

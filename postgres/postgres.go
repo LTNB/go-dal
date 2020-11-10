@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"database/sql"
-	go_dal "github.com/LTNB/go-dal"
+	goDal "github.com/LTNB/go-dal"
 	_ "github.com/lib/pq"
 	"reflect"
 )
@@ -18,7 +18,7 @@ type Helper struct {
 }
 
 func (helper Helper) GetDatabase() *sql.DB {
-	return go_dal.GetDatabase()
+	return goDal.GetDatabase()
 }
 
 //data type from sql ==> datatype from struct
