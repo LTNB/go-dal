@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	goDal "github.com/LTNB/go-dal"
-	sqlHelper "github.com/LTNB/go-dal/helper"
+	helper2 "github.com/LTNB/go-dal/helper"
 	"reflect"
 	"strings"
 	"time"
@@ -448,25 +448,38 @@ func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagNam
 //TODO ==> update mapping base bo with UUID and auditor
 func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) (map[string]interface{}, error) {
 	var err error
+	var bo helper2.BaseBo
+
 	numField := v.NumField()
 	for i := 0; i < numField; i++ {
 		field := t.Field(i)
+		value := v.Field(i)
+		//get tag name in field
 		tagNameStruct := strings.Split(field.Tag.Get(tagName), ",")
 		if tagNameStruct == nil || len(tagNameStruct) != 1 {
 			err = fmt.Errorf("tag name `%v` is empty or not unique.\n", tagName)
 			goto End
 		}
 		col := tagNameStruct[0]
+		//mapping data to map collection
 		if field.Type.Kind() == reflect.Struct {
-			if strings.Split(t.Field(i).Tag.Get("promoted"), ",")[0] == "true" {
-				result, err = helper.colsStructMapping(field.Type, v.Field(i), result, tagName)
+			// struct define by bz
+			if strings.Split(field.Tag.Get("promoted"), ",")[0] == "true" {
+				if field.Type == reflect.TypeOf(bo) {
+					idType := strings.Split(field.Tag.Get("id"), ",")
+					if len(idType) != 0 && idType[0] != "" {
+						result = helper.initPrimary(idType[0], field, tagName, result)
+						continue
+					}
+				}
+				result, err = helper.colsStructMapping(field.Type, value, result, tagName)
 			} else {
+				// mapping struct define by framework
 				switch field.Type {
 				case reflect.TypeOf(time.Time{}):
 					//call format(input) which return only one response
 					res := helper.timeMapping(v.Field(i))
 					result[col] = res[0].String()
-				case reflect.TypeOf(sqlHelper.BaseBo{}):
 					break
 				}
 			}
@@ -476,6 +489,32 @@ func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result m
 	}
 End:
 	return result, err
+}
+
+/**
+ * init primary key
+ * uuid :generate uuid value like 17b16d72-5496-4080-be2e-19bb84373a59
+ * timestamp: get current millisecond base on system timezone
+ * serial: ignore value and auto increase by database ( base on database type )
+ */
+func (helper Helper) initPrimary(idType string, field reflect.StructField, tagName string, result map[string]interface{}) map[string]interface{} {
+	switch idType {
+	case "uuid":
+		newId := reflect.New(reflect.TypeOf(field))
+		newId.Elem().Field(0).Set(reflect.ValueOf(helper2.UUIDGenerate()))
+		col := strings.Split(field.Type.Field(0).Tag.Get(tagName), ",")[0]
+		result[col] = newId.Elem().Field(0).Interface()
+		break
+	case "timestamp":
+		newId := reflect.New(reflect.TypeOf(field))
+		newId.Elem().Field(0).Set(reflect.ValueOf(time.Now().Unix() * 1000))
+		col := strings.Split(field.Type.Field(0).Tag.Get(tagName), ",")[0]
+		result[col] = newId.Elem().Field(0).Interface()
+		break
+	case "serial":
+		break
+	}
+	return result
 }
 
 /**

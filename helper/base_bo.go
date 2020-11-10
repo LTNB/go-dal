@@ -15,7 +15,7 @@ import (
  * base bo for all table, contain id as primary key
  */
 type BaseBo struct {
-	Id interface{} `json:"id" primary:"id"`
+	Id interface{} `json:"id" sql:"id" primary:"id"`
 }
 
 func UUIDGenerate() string {

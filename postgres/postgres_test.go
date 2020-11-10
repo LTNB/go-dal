@@ -2,6 +2,7 @@ package postgres
 
 import (
 	goDal "github.com/LTNB/go-dal"
+	"github.com/LTNB/go-dal/helper"
 	"github.com/LTNB/go-dal/helper/sql"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -17,20 +18,16 @@ import (
 
 var accountHelper sql.Helper
 
-type BaseBo struct {
-	Id string `json:"id" primary:"id" sql:"id"`
-}
-
 type Auditor struct {
 	Date time.Time `json:"date" sql:"date"`
 }
 type AccountMock struct {
-	BaseBo   `promoted:"true"`
-	Auditor  `promoted:"true"`
-	Email    string `json:"email" sql:"email"`
-	FullName string `json:"full_name" sql:"full_name"`
-	Role     string `json:"role" sql:"role"`
-	Active   bool   `json:"active" sql:"active"`
+	helper.BaseBo `promoted:"true"`
+	Auditor       `promoted:"true"`
+	Email         string `json:"email" sql:"email"`
+	FullName      string `json:"full_name" sql:"full_name"`
+	Role          string `json:"role" sql:"role"`
+	Active        bool   `json:"active" sql:"active"`
 }
 
 func setup() {
@@ -61,7 +58,7 @@ func TestConnection(t *testing.T) {
 
 func TestGetOne(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -83,7 +80,7 @@ func TestGetOne(t *testing.T) {
 //
 func TestGetOneByTag(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -103,7 +100,7 @@ func TestGetOneByTag(t *testing.T) {
 
 func TestGetOneByConditions(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -124,7 +121,7 @@ func TestGetOneByConditions(t *testing.T) {
 
 func TestGetAsMap(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -144,7 +141,7 @@ func TestGetAsMap(t *testing.T) {
 
 func TestGetAll(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -152,7 +149,7 @@ func TestGetAll(t *testing.T) {
 		Active:   true,
 	}
 	account1 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "lamtnb",
@@ -161,7 +158,7 @@ func TestGetAll(t *testing.T) {
 	}
 	_, err := accountHelper.Create(account)
 	assert.Nil(t, err, "nothing")
-	_, err =accountHelper.Create(account1)
+	_, err = accountHelper.Create(account1)
 	assert.Nil(t, err, "nothing")
 	result, err := accountHelper.GetAll()
 	assert.Nil(t, err, "nothing")
@@ -175,7 +172,7 @@ func TestGetAll(t *testing.T) {
 
 func TestGetAllByTag(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -183,14 +180,14 @@ func TestGetAllByTag(t *testing.T) {
 		Active:   true,
 	}
 	account1 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "lamtnb",
 		Role:     "user",
 		Active:   false,
 	}
-	_, err :=accountHelper.Create(account)
+	_, err := accountHelper.Create(account)
 	assert.Nil(t, err, "nothing")
 	_, err = accountHelper.Create(account1)
 	assert.Nil(t, err, "nothing")
@@ -206,7 +203,7 @@ func TestGetAllByTag(t *testing.T) {
 
 func TestGetAllAsMap(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -214,7 +211,7 @@ func TestGetAllAsMap(t *testing.T) {
 		Active:   true,
 	}
 	account1 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "lamtnb",
@@ -237,7 +234,7 @@ func TestGetAllAsMap(t *testing.T) {
 
 func TestGetByConditions(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -245,7 +242,7 @@ func TestGetByConditions(t *testing.T) {
 		Active:   true,
 	}
 	account1 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "lamtnb",
@@ -267,14 +264,14 @@ func TestGetByConditions(t *testing.T) {
 
 	assert.Equal(t, 1, len(result), "success")
 	assert.Nil(t, err, "nothing")
-	_,err = accountHelper.Delete(account)
+	_, err = accountHelper.Delete(account)
 	_, err = accountHelper.Delete(account1)
 	assert.Nil(t, err, "nothing")
 }
 
 func TestGetByConditionsAsMap(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -282,7 +279,7 @@ func TestGetByConditionsAsMap(t *testing.T) {
 		Active:   true,
 	}
 	account1 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "lamtnb",
@@ -309,15 +306,16 @@ func TestGetByConditionsAsMap(t *testing.T) {
 
 func TestCreateAndDelete(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
 		Role:     "UnixDate",
 		Active:   true,
 	}
-	_, err := accountHelper.Create(account)
+	effected, err := accountHelper.Create(account)
 	assert.Nil(t, err, "err must be nil")
+	assert.Equal(t, effected, int64(1))
 	conditions := make(map[string]interface{})
 	conditions["email"] = "baolam0307@gmail.com"
 	_, err = accountHelper.DeleteByConditions(conditions)
@@ -329,7 +327,7 @@ func TestCreateAndDelete(t *testing.T) {
  */
 func TestCreateBatch(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -337,7 +335,7 @@ func TestCreateBatch(t *testing.T) {
 		Active:   true,
 	}
 	account2 := AccountMock{
-		BaseBo:   BaseBo{Id: "2"},
+		BaseBo:   helper.BaseBo{Id: "2"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@gmail.com",
 		FullName: "LTNB",
@@ -357,7 +355,7 @@ func TestCreateBatch(t *testing.T) {
 
 func TestCreateByTagAndDelete(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -374,7 +372,7 @@ func TestCreateByTagAndDelete(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -384,7 +382,7 @@ func TestUpdate(t *testing.T) {
 	_, err := accountHelper.Create(account)
 	assert.Nil(t, err, "nothing")
 	account = AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@scommerce.asia",
 		FullName: "Ta Ngoc Bao Lam",
@@ -404,7 +402,7 @@ func TestUpdate(t *testing.T) {
 
 func TestUpdateByTag(t *testing.T) {
 	account := AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "baolam0307@gmail.com",
 		FullName: "Ta Ngoc Bao Lam",
@@ -414,14 +412,14 @@ func TestUpdateByTag(t *testing.T) {
 	_, err := accountHelper.Create(account)
 	assert.Nil(t, err, "nothing")
 	account = AccountMock{
-		BaseBo:   BaseBo{Id: "1"},
+		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@scommerce.asia",
 		FullName: "Ta Ngoc Bao Lam",
 		Role:     "admin",
 		Active:   true,
 	}
-	_, err = accountHelper.UpdateByTag(account, "sql")
+	_, err = accountHelper.UpdateByTag(account, "json")
 	assert.Nil(t, err, "nothing")
 	account1 := AccountMock{}
 	account1.Id = "1"
