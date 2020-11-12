@@ -49,8 +49,8 @@ create table account
     ```
    db := go_dal.Config{
             DriverName: driverName,
-       		DataSourceName: dataSourceName,
-       		MaxIdleConns:   maxIdleConns,
+       	    DataSourceName: dataSourceName,
+       	    MaxIdleConns:   maxIdleConns,
             MaxOpenConns: maxOpenConns,
             MaxLifeTime: maxLifeTime
         }
@@ -59,13 +59,13 @@ create table account
 3. Create entity:
 ```
 type AccountMock struct {
-	helper.BaseBo  `promoted:"true" id:"uuid"`
-	helper.Version `promoted:"true"`
-	helper.Auditor        `promoted:"true"`
-	Email          string `json:"email" sql:"email"`
-	FullName       string `json:"full_name" sql:"full_name"`
-	Role           string `json:"role" sql:"role"`
-	Active         bool   `json:"active" sql:"active"`
+	helper.BaseBo		`promoted:"true" id:"uuid"`
+	helper.Version		`promoted:"true"`
+	helper.Auditor          `promoted:"true"`
+	Email          string   `json:"email" sql:"email"`
+	FullName       string   `json:"full_name" sql:"full_name"`
+	Role           string   `json:"role" sql:"role"`
+	Active         bool     `json:"active" sql:"active"`
 }
 ``` 
 - At `BaseBo`: declare `id` with type `uuid`, `series` or `timestamp` for primary key type
