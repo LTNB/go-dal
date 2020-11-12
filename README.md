@@ -71,9 +71,9 @@ type AccountMock struct {
 - At `BaseBo`: declare `id` with type `uuid`, `series` or `timestamp` for primary key type
 - Including the `Version` if using versioning object
 - Including the `Auditor` if using audit log 
-3. Examples use ORM mapping: https://github.com/baolam0307/go-dal/blob/master/postgres/postgres_test.go
+4. Examples use ORM mapping: https://github.com/baolam0307/go-dal/blob/master/postgres/postgres_test.go
 
-4. Examples use query builder: https://github.com/baolam0307/go-dal/blob/master/helper/sql/query_builder_test.go
+5. Examples use query builder: https://github.com/baolam0307/go-dal/blob/master/helper/sql/query_builder_test.go
 
 ## Usage
 `import database/sql`
