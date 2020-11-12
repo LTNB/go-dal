@@ -137,8 +137,15 @@ func (builder SelectQueryBuilder) buildOrderBy(result string) string {
 	return result
 }
 
+/**
+ * if limit == 0 ==> return all records
+ */
 func (builder SelectQueryBuilder) buildLimit(result string) string {
-	return fmt.Sprintf(result+" LIMIT %v", builder.Limit)
+	if builder.Limit == 0 {
+		return result
+	} else {
+		return fmt.Sprintf(result+" LIMIT %v", builder.Limit)
+	}
 }
 
 func (builder SelectQueryBuilder) buildOffset(result string) string {

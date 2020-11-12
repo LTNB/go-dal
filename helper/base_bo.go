@@ -27,7 +27,7 @@ func UUIDGenerate() string {
  * versioning data, prevent override data when modify
  */
 type Version struct {
-	Version string `json:"version"`
+	Version int64 `json:"version"`
 }
 
 /**

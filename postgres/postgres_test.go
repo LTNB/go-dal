@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"fmt"
 	goDal "github.com/LTNB/go-dal"
 	"github.com/LTNB/go-dal/helper"
 	"github.com/LTNB/go-dal/helper/sql"
@@ -22,12 +23,13 @@ type Auditor struct {
 	Date time.Time `json:"date" sql:"date"`
 }
 type AccountMock struct {
-	helper.BaseBo `promoted:"true"`
-	Auditor       `promoted:"true"`
-	Email         string `json:"email" sql:"email"`
-	FullName      string `json:"full_name" sql:"full_name"`
-	Role          string `json:"role" sql:"role"`
-	Active        bool   `json:"active" sql:"active"`
+	helper.BaseBo  `promoted:"true"`
+	helper.Version `promoted:"true"`
+	Auditor        `promoted:"true"`
+	Email          string `json:"email" sql:"email"`
+	FullName       string `json:"full_name" sql:"full_name"`
+	Role           string `json:"role" sql:"role"`
+	Active         bool   `json:"active" sql:"active"`
 }
 
 func setup() {
@@ -400,7 +402,7 @@ func TestUpdate(t *testing.T) {
 	assert.Nil(t, err, "nothing")
 }
 
-func TestUpdateByTag(t *testing.T) {
+func TestUpdateFailByVersion(t *testing.T) {
 	account := AccountMock{
 		BaseBo:   helper.BaseBo{Id: "1"},
 		Auditor:  Auditor{Date: time.Now()},
@@ -413,6 +415,43 @@ func TestUpdateByTag(t *testing.T) {
 	assert.Nil(t, err, "nothing")
 	account = AccountMock{
 		BaseBo:   helper.BaseBo{Id: "1"},
+		Auditor:  Auditor{Date: time.Now()},
+		Email:    "lamtnb@scommerce.asia",
+		FullName: "Ta Ngoc Bao Lam",
+		Role:     "admin",
+		Active:   true,
+	}
+	_, err = accountHelper.Update(account)
+	assert.Nil(t, err, "nothing")
+
+	account = AccountMock{
+		BaseBo:   helper.BaseBo{Id: "1"},
+		Auditor:  Auditor{Date: time.Now()},
+		Email:    "ltnb@scommerce.asia",
+		FullName: "LTNB",
+		Role:     "admin",
+		Active:   false,
+	}
+	_, err = accountHelper.Update(account)
+	assert.Errorf(t, err, "version out of date")
+	if _, err = accountHelper.Delete(account); err != nil {
+		fmt.Println(err)
+	}
+}
+
+func TestUpdateByTag(t *testing.T) {
+	account := AccountMock{
+		BaseBo:   helper.BaseBo{Id: 1},
+		Auditor:  Auditor{Date: time.Now()},
+		Email:    "baolam0307@gmail.com",
+		FullName: "Ta Ngoc Bao Lam",
+		Role:     "admin",
+		Active:   true,
+	}
+	_, err := accountHelper.Create(account)
+	assert.Nil(t, err, "nothing")
+	account = AccountMock{
+		BaseBo:   helper.BaseBo{Id: 1},
 		Auditor:  Auditor{Date: time.Now()},
 		Email:    "lamtnb@scommerce.asia",
 		FullName: "Ta Ngoc Bao Lam",

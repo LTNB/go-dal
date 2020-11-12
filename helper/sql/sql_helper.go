@@ -3,6 +3,7 @@ package sql
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	goDal "github.com/LTNB/go-dal"
 	helper2 "github.com/LTNB/go-dal/helper"
@@ -266,7 +267,7 @@ func (helper Helper) CreateByTag(bo interface{}, tagName string) (int64, error) 
 func (helper Helper) Update(bo interface{}) (int64, error) {
 	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), helper.DefaultTagName)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	return result.RowsAffected()
 }
@@ -277,7 +278,7 @@ func (helper Helper) Update(bo interface{}) (int64, error) {
 func (helper Helper) UpdateByTag(bo interface{}, tagName string) (int64, error) {
 	result, err := helper.update(bo, helper.TableName, helper.Handler.GetDatabase(), tagName)
 	if err != nil {
-		return 0, nil
+		return 0, err
 	}
 	return result.RowsAffected()
 }
@@ -353,6 +354,11 @@ func getAllRows(tableName string, conditions map[string]interface{}, orderBy map
  */
 func (helper Helper) createByTag(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
 	data, err := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
+	//check version field existed
+	_, has := reflect.TypeOf(bo).FieldByName("Version")
+	if has {
+		data["version"] = 0
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +392,12 @@ func (helper Helper) createBatchByTag(boList []interface{}, tableName string, db
 		if err != nil {
 			return nil, err
 		}
-		value := make([]interface{}, 6)
+		//check version field existed
+		_, has := reflect.TypeOf(bo).FieldByName("Version")
+		if has {
+			data["version"] = 0
+		}
+		value := make([]interface{}, len(data))
 		count := 0
 		for k, v := range data {
 			if i == 0 {
@@ -420,7 +431,7 @@ func (helper Helper) createBatchByTag(boList []interface{}, tableName string, db
 }
 
 /**
- * update bo by tag
+ * update bo by primary key and mapping with tagName
  */
 func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagName string) (sql.Result, error) {
 	data, err := helper.colsStructMapping(reflect.TypeOf(bo), reflect.ValueOf(bo), make(map[string]interface{}), tagName)
@@ -428,6 +439,15 @@ func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagNam
 		return nil, err
 	}
 	pairWhereClause := getPrimaryKeysValues(reflect.TypeOf(bo), reflect.ValueOf(bo), map[string]interface{}{})
+	//check version field existed
+	if _, has := reflect.TypeOf(bo).FieldByName("Version"); has {
+		arr := make([]map[string]interface{}, 1)
+		arr[0] = data
+		if _, err := helper.checkVersion(&arr, pairWhereClause, tagName); err != nil {
+			return nil, err
+		}
+	}
+
 	builder := UpdateBuilder{
 		TableName: tableName,
 		WhereClause: WhereClauseBuilder{
@@ -443,13 +463,38 @@ func (helper Helper) update(bo interface{}, tableName string, db *sql.DB, tagNam
 }
 
 /**
+ * check version and update new version for bo
+ */
+func (helper Helper) checkVersion(dataList *[]map[string]interface{}, pairWhereClause map[string]interface{}, tagName string) (*[]map[string]interface{}, error) {
+	var err error
+	// get all rows by conditions
+	rows, err := helper.GetByConditionsAsMap(pairWhereClause, nil, 0, 0, tagName)
+	if err != nil {
+		return nil, err
+	}
+	//compare version
+	if len(rows) > 0 {
+		for _, item := range rows {
+			for _, bo := range *dataList {
+				versionIP := bo["version"]
+				if fmt.Sprintf("%v", item["id"]) == fmt.Sprintf("%v", bo["id"]) {
+					if fmt.Sprintf("%v", versionIP) != fmt.Sprintf("%v", item["version"]) {
+						return nil, errors.New(fmt.Sprintf("version of {id: %v} is not matched:  %v != %v", item["id"], item["version"], versionIP))
+					}
+					bo["version"] = item["version"].(int64) + 1
+				}
+			}
+		}
+	}
+	return dataList, err
+}
+
+/**
  * data type from struct to data type sql
  */
-//TODO ==> update mapping base bo with UUID and auditor
 func (helper Helper) colsStructMapping(t reflect.Type, v reflect.Value, result map[string]interface{}, tagName string) (map[string]interface{}, error) {
 	var err error
 	var bo helper2.BaseBo
-
 	numField := v.NumField()
 	for i := 0; i < numField; i++ {
 		field := t.Field(i)
@@ -551,7 +596,6 @@ func queryWithContext(sql string, db *sql.DB) (*sql.Rows, error) {
 /*
  * execute with context
  */
-
 //TODO ==> audit log in here...!
 func execWithContext(sql string, db *sql.DB) (sql.Result, error) {
 	ctx := context.Background()
